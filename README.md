@@ -238,11 +238,3 @@ ai-jury-agent/
 | **n8n** | Workflow automation orchestration |
 
 ---
-
-## 📝 License
-
-MIT License - Feel free to use and modify for your hackathons!
-
----
-
-Built with ❤️ for hackathon organizers everywhere.
