@@ -1,0 +1,350 @@
+{
+    "name": "AI Jury Agent - Hackathon PPT Screening",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "jury-agent",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "documentId": {
+                    "__rl": true,
+                    "mode": "id",
+                    "value": "={{ $env.GOOGLE_SHEET_ID }}"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "mode": "name",
+                    "value": "Sheet1"
+                },
+                "returnAll": true,
+                "options": {}
+            },
+            "id": "google-sheets-read",
+            "name": "Read Google Form Responses",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4,
+            "position": [
+                500,
+                300
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "YOUR_CREDENTIAL_ID",
+                    "name": "Google Sheets Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extract submission data from Google Sheets rows\nconst items = $input.all();\nconst submissions = items.map((item, index) => {\n  const data = item.json;\n  return {\n    json: {\n      index: index,\n      teamName: data['Team Name'] || data['team name'] || 'Unknown',\n      email: data['Email'] || data['email'] || '',\n      projectTitle: data['Project Title'] || data['project title'] || '',\n      driveLink: data['PPT Link'] || data['Drive Link'] || data['Google Drive Link'] || '',\n      description: data['Description'] || data['Project Description'] || '',\n      members: data['Team Members'] || data['Members'] || '',\n      timestamp: data['Timestamp'] || new Date().toISOString()\n    }\n  };\n});\n\nreturn submissions;"
+            },
+            "id": "extract-data",
+            "name": "Extract Submission Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                750,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "batchSize": 1,
+                "options": {
+                    "reset": false
+                }
+            },
+            "id": "split-batches",
+            "name": "Process One at a Time",
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                1000,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://host.docker.internal:3000/api/analyze",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "teamName",
+                            "value": "={{ $json.teamName }}"
+                        },
+                        {
+                            "name": "pptContent",
+                            "value": "=Team: {{ $json.teamName }}\\nProject: {{ $json.projectTitle }}\\nDescription: {{ $json.description }}\\nMembers: {{ $json.members }}\\nDrive Link: {{ $json.driveLink }}"
+                        },
+                        {
+                            "name": "theme",
+                            "value": "={{ $env.HACKATHON_THEME || 'AI for Social Good' }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "ai-evaluate",
+            "name": "AI Evaluate PPT",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "amount": 2,
+                "unit": "seconds"
+            },
+            "id": "rate-limit-wait",
+            "name": "Rate Limit Delay",
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1,
+            "position": [
+                1500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Collect all evaluation results\nconst items = $input.all();\nconst results = items.map(item => item.json);\n\n// Sort by normalized score descending\nresults.sort((a, b) => {\n  const scoreA = a.evaluation?.normalized_score || 0;\n  const scoreB = b.evaluation?.normalized_score || 0;\n  return scoreB - scoreA;\n});\n\n// Mark top 10 as shortlisted\nconst topN = parseInt($env.TOP_N || '10');\nconst enriched = results.map((r, i) => ({\n  json: {\n    ...r,\n    rank: i + 1,\n    shortlisted: i < topN\n  }\n}));\n\nreturn enriched;"
+            },
+            "id": "rank-results",
+            "name": "Rank & Select Top Teams",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1750,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.shortlisted }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "if-shortlisted",
+            "name": "Is Shortlisted?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                2000,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.email }}",
+                "subject": "=🎉 Congratulations! You've been shortlisted for {{ $env.HACKATHON_NAME }}!",
+                "emailType": "html",
+                "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f0f2e, #1a1a3e); border-radius: 16px; overflow: hidden; border: 1px solid rgba(99, 102, 241, 0.3);\"><div style=\"background: linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7); padding: 40px 30px; text-align: center;\"><h1 style=\"color: white; margin: 0; font-size: 28px;\">🏆 {{ $env.HACKATHON_NAME || 'TechHack 2026' }}</h1></div><div style=\"padding: 40px 30px; color: #e2e8f0;\"><h2 style=\"color: #a78bfa;\">Congratulations, Team {{ $json.teamName }}! 🎉</h2><p>Your team has been <strong>shortlisted</strong> for the next round!</p><p>Score: <strong>{{ $json.evaluation?.normalized_score || 'N/A' }}/10</strong></p><p>Rank: <strong>#{{ $json.rank }}</strong></p><p style=\"background: rgba(99, 102, 241, 0.15); border-left: 4px solid #6366f1; padding: 15px 20px; border-radius: 0 8px 8px 0;\">More details about the next round will follow shortly.</p><p>Best wishes,<br><strong>{{ $env.ORGANIZER_NAME || 'Tech Club' }}</strong></p></div></div>",
+                "options": {}
+            },
+            "id": "send-shortlist-email",
+            "name": "Send Shortlist Email",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2,
+            "position": [
+                2250,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.email }}",
+                "subject": "=Thank you for participating in {{ $env.HACKATHON_NAME || 'TechHack 2026' }}",
+                "emailType": "html",
+                "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f0f2e, #1a1a3e); border-radius: 16px; overflow: hidden;\"><div style=\"background: linear-gradient(135deg, #475569, #64748b); padding: 40px 30px; text-align: center;\"><h1 style=\"color: white; margin: 0;\">{{ $env.HACKATHON_NAME || 'TechHack 2026' }}</h1></div><div style=\"padding: 40px 30px; color: #e2e8f0;\"><h2 style=\"color: #94a3b8;\">Dear Team {{ $json.teamName }},</h2><p>Thank you for your participation. After careful evaluation, your team has not been shortlisted for the next round. We encourage you to keep innovating!</p><p>Best regards,<br><strong>{{ $env.ORGANIZER_NAME || 'Tech Club' }}</strong></p></div></div>",
+                "options": {}
+            },
+            "id": "send-rejection-email",
+            "name": "Send Rejection Email",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2,
+            "position": [
+                2250,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ success: true, message: 'Jury evaluation workflow completed', totalProcessed: $input.all().length }) }}"
+            },
+            "id": "respond-webhook",
+            "name": "Respond to Webhook",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                2500,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Read Google Form Responses",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Read Google Form Responses": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Submission Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Submission Data": {
+            "main": [
+                [
+                    {
+                        "node": "Process One at a Time",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process One at a Time": {
+            "main": [
+                [
+                    {
+                        "node": "AI Evaluate PPT",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Rank & Select Top Teams",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Evaluate PPT": {
+            "main": [
+                [
+                    {
+                        "node": "Rate Limit Delay",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Rate Limit Delay": {
+            "main": [
+                [
+                    {
+                        "node": "Process One at a Time",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Rank & Select Top Teams": {
+            "main": [
+                [
+                    {
+                        "node": "Is Shortlisted?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Shortlisted?": {
+            "main": [
+                [
+                    {
+                        "node": "Send Shortlist Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Send Rejection Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Shortlist Email": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Rejection Email": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "hackathon"
+        },
+        {
+            "name": "jury"
+        },
+        {
+            "name": "ai-agent"
+        }
+    ]
+}

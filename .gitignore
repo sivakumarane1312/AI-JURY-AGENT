@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment & Secrets
+.env
+.env.local
+.env.production
+credentials.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# Build & misc
+dist/
+build/
+*.tgz
