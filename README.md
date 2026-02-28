@@ -1,11 +1,10 @@
-
 # 🏛️ AI Jury Agent
 
-> An AI-powered automated jury system that eliminates bias and inefficiency in hackathon first-round screening by using Generative AI to evaluate, score, and rank PPT submissions — fully automated, from submission to email notification.
+> An AI-powered automated jury system that eliminates bias and inefficiency in hackathon first-round screening by using **LLaMA 3.3 70B** (via NVIDIA NIM) to evaluate, score, and rank PPT submissions — fully automated, from submission to email notification.
 
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=node.js&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-000000?style=flat&logo=express&logoColor=white)
-![Google Gemini](https://img.shields.io/badge/Gemini_AI-4285F4?style=flat&logo=google&logoColor=white)
+![LLaMA 3.3](https://img.shields.io/badge/LLaMA_3.3-76B900?style=flat&logo=nvidia&logoColor=white)
 ![n8n](https://img.shields.io/badge/n8n-EA4B71?style=flat&logo=n8n&logoColor=white)
 
 ---
@@ -40,13 +39,13 @@ A single click triggers the AI to read every submission, analyze the PPT content
 
 | Innovation | Description |
 |---|---|
-| 🤖 **AI-Powered Evaluation** | Uses Google Gemini AI to deeply analyze PPT content — not just keywords, but understanding ideas, feasibility, and innovation |
+| 🤖 **AI-Powered Evaluation** | Uses LLaMA 3.3 70B (via NVIDIA NIM) to deeply analyze PPT content — not just keywords, but understanding ideas, feasibility, and innovation |
 | 📊 **Multi-Criteria Scoring** | Evaluates on 5 weighted criteria: Idea Originality, Solution Relevance, Novelty, Feasibility, and Innovation |
 | 🔄 **End-to-End Automation** | From Google Form submission to email notification — zero manual intervention using n8n workflow orchestration |
 | 📧 **Smart Email System** | Auto-generates personalized HTML emails for shortlisted and rejected teams with detailed feedback |
 | 🎯 **Theme-Aware Analysis** | The AI evaluates submissions in the context of the hackathon theme, ensuring relevance-based scoring |
 | 💎 **Real-Time Dashboard** | Premium dark-themed web dashboard to monitor evaluations, view rankings, and manage the entire process |
-| ⚡ **Dual AI Support** | Supports both NVIDIA NIM (LLaMA 3.3) and Google Gemini as evaluation engines with automatic fallback |
+| ⚡ **Dual AI Fallback** | Primary: LLaMA 3.3 70B via NVIDIA NIM (free) — Fallback: Google Gemini for high availability |
 | 📋 **Google Sheets Integration** | Seamlessly reads submissions from Google Forms responses without any manual data handling |
 
 ---
@@ -62,7 +61,7 @@ A single click triggers the AI to read every submission, analyze the PPT content
                                               ┌────────┴────────┐
                                               │                  │
                                     ┌─────────▼──────┐  ┌───────▼────────┐
-                                    │  Gemini AI      │  │  Web Dashboard  │
+                                    │  LLaMA 3.3 70B  │  │  Web Dashboard  │
                                     │  (PPT Analysis)  │  │  (Management)   │
                                     └─────────┬──────┘  └───────┬────────┘
                                               │                  │
@@ -88,8 +87,8 @@ A single click triggers the AI to read every submission, analyze the PPT content
 | Technology | Purpose |
 |---|---|
 | **Node.js + Express** | Backend API server |
-| **Google Gemini AI** | PPT content analysis and intelligent scoring |
-| **NVIDIA NIM (LLaMA 3.3)** | Alternative AI engine with automatic fallback |
+| **LLaMA 3.3 70B (NVIDIA NIM)** | Primary AI engine for PPT analysis and intelligent scoring |
+| **Google Gemini AI** | Fallback AI engine for high availability |
 | **Google Sheets API** | Reading form responses as structured data |
 | **Google Drive API** | Accessing PPT files from shared Drive links |
 | **Nodemailer + Gmail SMTP** | Sending personalized HTML email notifications |
